@@ -8,7 +8,7 @@ We need to enrich incoming data (dataset) with user sessions. By session we mean
 
 ### Expected output
 
-```eventTime, eventType, category, ..., sessionId, sessionStartTime, sessionEndTime```
+```category, eventTime, eventType, ..., sessionId, sessionStartTime, sessionEndTime```
 
 ## Problem #2
 
