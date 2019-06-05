@@ -16,12 +16,12 @@ class TaskTests extends FunSuite with BeforeAndAfterAll {
       .csv("src/test/resources/data/test_events.csv")
   }
 
-  test("that `enrichDatasetWithUserSession` function returns proper amount of rows (27) and `LessThanOneMin` for `Books` category has proper value (2)") {
+  test("that `enrichDatasetWithUserSession` function returns proper amount of rows (27)") {
     val df = Tasks.enrichDatasetWithUserSession(events)
     assert(df.count() === 27)
   }
 
-  test("that `findUniqueUsers` function returns a proper amount of rows (3)") {
+  test("that `findUniqueUsers` function returns a proper amount of rows (3) and `LessThanOneMin` for `Books` category has proper value (2)") {
     import spark.implicits._
     val df = Tasks.findUniqueUsers(Tasks.enrichDatasetWithUserSession(events))
     assert(df.count() === 3)
