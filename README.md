@@ -1,14 +1,14 @@
 # Overview
 
-This is an `Apache Spark` solution for the 2 problems.
+This is a `Spark` solution for 2 problems.
 
 ## Problem #1
 
-We need to enrich incoming data (daatset) with user sessions. By session we mean consecutive events that belong to a single category and are not more than 5 minutes away from each other.
+We need to enrich incoming data (dataset) with user sessions. By session we mean consecutive events that belong to a single category and aren't more than 5 minutes away from each other.
 
 ### Expected output
 
-```eventTime, eventType, category, ..., sessionId, sessionStartTime, sessionEndTime```  
+```eventTime, eventType, category, ..., sessionId, sessionStartTime, sessionEndTime```
 
 ## Problem #2
 
@@ -17,9 +17,7 @@ We also need to compute the following statistics:
 * for each category find number of unique users spending less than 1 minute, 1 to 5 minutes and more than 5 minutes
 * for each category find top 10 products ranked by time spent by users on product pages; for this particular task, session lasts until the user is looking at particular product, when particular user switches to another product the new session starts
  
-# Dataset
-
-Example (`events.csv`):
+# Dataset Example
 
 Category  |  Product             |  User Id   |  Event Time          |  Event Type
 ----------|----------------------|------------|----------------------|--------------
