@@ -68,7 +68,7 @@ object Tasks {
 
     // Find top 10 products (2.3)
 
-    val rankedProducts = ???
+    val rankedProducts = ??? // Todo: Implement me!
 
   }
 }
