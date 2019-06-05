@@ -35,13 +35,19 @@ Solution is made with the next technologies:
 3. Spark Window Functions
 4. Spark DataSet Aggregators
 
-## How to build and run
+## How to run
 
-TBD
+To run application you need to open `sbt` shell and execute `run` command:
+
+```bash
+$> run
+```
+
+You should see application output in console.
 
 ## How to test
 
-To test the App you need to open `sbt` shell and execute next command:
+To test application you need to open `sbt` shell and execute `test` command:
 
 ```bash
 $> test
