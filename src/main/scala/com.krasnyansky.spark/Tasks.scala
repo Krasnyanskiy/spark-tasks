@@ -14,26 +14,26 @@ object Tasks {
       .option("inferSchema", "true")
       .csv("src/main/resources/data/events.csv")
 
-    // ============================================ Task [1] ============================================
+    // ============================================ Task 1 ============================================
 
     val enrichedDatasetWithUserSession = enrichDatasetWithUserSession(events)
     printDF(enrichedDatasetWithUserSession)
 
-    // ============================================ Task [2] ============================================
+    // ============================================ Task 2 ============================================
 
-    // [2.1] Get Median
+    // 2.1. Get Median
 
     val medianSessionDuration = findMedianSessionDuration(enrichedDatasetWithUserSession)
     printDF(medianSessionDuration)
 
-    // [2.2] Find number of unique users
+    // 2.2. Find number of unique users
 
     val uniqueUsers = findUniqueUsers(enrichedDatasetWithUserSession)
     printDF(uniqueUsers)
 
-    // [2.3] Find top 10 products
+    // 2.3. Find top 10 products
 
-    val rankedProducts = ??? // Todo: Implement me!
+    val rankedProducts = ??? // Todo: Implement!
   }
 
   // ============================================= Helpers =============================================
