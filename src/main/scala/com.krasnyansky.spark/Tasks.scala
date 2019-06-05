@@ -66,7 +66,7 @@ object Tasks {
 
     uniqueUsers.show(10000000, truncate = 0)
 
-    // Find find top 10 products (2.3)
+    // Find top 10 products (2.3)
 
     val rankedProducts = ???
 

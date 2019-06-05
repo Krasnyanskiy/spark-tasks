@@ -1,0 +1,17 @@
+### JetBrains template
+.idea/
+logs/
+out/
+target/
+*.iml
+.idea_modules/
+.directory
+
+### OSX template
+.DS_Store
+
+# Thumbnails
+._*
+
+.Spotlight-V100
+.Trashes
