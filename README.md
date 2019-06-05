@@ -1,6 +1,6 @@
 # Overview
 
-`Spark Tasks` is a simple solution for problems that we need to solve using `Apache Spark` and given Dataset.
+`Spark Tasks` is a simple solution for problems that we need to solve using `Apache Spark` on given Dataset.
 
 ## Dataset (example)
 
