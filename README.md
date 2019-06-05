@@ -41,4 +41,8 @@ TBD
 
 ## How to test
 
-TBD
+To test the App you need to open `sbt` shell and execute next command:
+
+```bash
+$> test
+``` 
