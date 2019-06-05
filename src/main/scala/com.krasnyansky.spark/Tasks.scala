@@ -1,11 +1,12 @@
 package com.krasnyansky.spark
 
+import org.apache.spark.sql.DataFrame
+
 object Tasks {
   import org.apache.spark.sql.functions._
   import spark.implicits._
 
   def main(args: Array[String]): Unit = {
-
     val events = spark.read
       .option("delimiter", "\t")
       .option("header", "true")
@@ -13,11 +14,40 @@ object Tasks {
       .option("inferSchema", "true")
       .csv("src/main/resources/data/events.csv")
 
-    // ============================================ Task #1 ============================================
+    // ============================================ Task [1] ============================================
 
+    val enrichedDatasetWithUserSession = enrichDatasetWithUserSession(events)
+    printDF(enrichedDatasetWithUserSession)
+
+    // ============================================ Task [2] ============================================
+
+    // [2.1] Get Median
+
+    val medianSessionDuration = findMedianSessionDuration(enrichedDatasetWithUserSession)
+    printDF(medianSessionDuration)
+
+    // [2.2] Find number of unique users
+
+    val uniqueUsers = findUniqueUsers(enrichedDatasetWithUserSession)
+    printDF(uniqueUsers)
+
+    // [2.3] Find top 10 products
+
+    val rankedProducts = ??? // Todo: Implement me!
+  }
+
+  // ============================================= Helpers =============================================
+
+  /**
+    * Enriches Dataset (Events) with user sessions.  By session we mean consecutive events that belong
+    * to a single category and aren't more than 5 minutes away from each other.
+    *
+    * @return new DF with user session
+    */
+  def enrichDatasetWithUserSession(events: DataFrame): DataFrame = {
     val groupedEvents = events.groupBy(window($"eventTime", "5 minutes"), $"eventType")
 
-    val sessionStatistic = groupedEvents.agg(
+    groupedEvents.agg(
       min($"eventTime") as "sessionStartTime",
       max($"eventTime") as "sessionEndTime",
       collect_list(array($"category", $"product", $"userId", $"eventTime", $"eventType")) as "record"
@@ -33,42 +63,48 @@ object Tasks {
         $"sessionId",
         $"sessionStartTime",
         $"sessionEndTime"
-      ).cache() // cache?
+      ).cache()
+  }
 
-    sessionStatistic.show(1000000, truncate = 0)
-
-    // ============================================ Task #2 ============================================
-
-    // Get Median (2.1)
-
-    val medianSessionDuration = sessionStatistic
+  /**
+    * Finds median session duration.
+    *
+    * @return DF that contains median session duration (statistics)
+    */
+  def findMedianSessionDuration(eventsWithUserSessions: DataFrame): DataFrame = {
+    eventsWithUserSessions
       .withColumn("duration", unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))
       .groupBy("category")
       .agg(callUDF("percentile_approx", col("duration"), lit(0.5)) as "median")
+  }
 
-    medianSessionDuration.show(10000000, truncate = 0)
-
-    // Find number of unique users (2.2)
-
+  /**
+    * Finds number of unique users spending less than 1 minute, 1 to 5 minutes and more than 5 minutes
+    * for each category.
+    *
+    * @return DF with unique users stats
+    */
+  def findUniqueUsers(sessionStatistic: DataFrame): DataFrame = {
     val withDuration = sessionStatistic
       .withColumn(
         "duration",
         (unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))/60
       )
 
-    val uniqueUsers = withDuration
+    withDuration
       .groupBy("category")
       .agg(
         countDistinct($"userId", when($"duration" < 1, $"userId")) as "lessThanOneMin",
         countDistinct($"userId", when($"duration" > 1 && $"duration" < 5, $"userId")) as "oneToFiveMins",
         countDistinct($"userId", when($"duration" > 5, $"userId")) as "moreThanFiveMins"
       )
-
-    uniqueUsers.show(10000000, truncate = 0)
-
-    // Find top 10 products (2.3)
-
-    val rankedProducts = ??? // Todo: Implement me!
-
   }
+
+  /**
+    * Prints DF with a limit - maximum 1 million rows.
+    */
+  def printDF(df: DataFrame): Unit = {
+    df.show(1000000, truncate = 0)
+  }
+
 }
