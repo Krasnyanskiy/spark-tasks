@@ -27,7 +27,7 @@ We also need to compute the following statistics:
 * for each category find number of unique users spending less than 1 minute, 1 to 5 minutes and more than 5 minutes
 * for each category find top 10 products ranked by time spent by users on product pages; for this particular task, session lasts until the user is looking at particular product, when particular user switches to another product the new session starts
 
-# Technologies
+## Technologies
 
 The solution has been made on top of such technologies as:
 
