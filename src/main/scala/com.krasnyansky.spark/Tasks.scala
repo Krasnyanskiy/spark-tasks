@@ -1,6 +1,6 @@
 package com.krasnyansky.spark
 
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.sql.{Column, DataFrame}
 
 object Tasks {
   import org.apache.spark.sql.functions._
@@ -33,7 +33,8 @@ object Tasks {
 
     // 2.3. Find top 10 products
 
-    val rankedProducts = ??? // Todo: Implement!
+    val rankedProducts = findRunkedProducts(events)
+    printDF(rankedProducts)
   }
 
   // ============================================= Helpers =============================================
@@ -101,10 +102,44 @@ object Tasks {
   }
 
   /**
+    * Finds top 10 products ranked by time spent by users on product pages for each category.
+    */
+  def findRunkedProducts(events: DataFrame): DataFrame = {
+    val groupedUsers = events.groupBy(window($"eventTime", "5 minutes"), $"userId", $"product").agg(
+      min($"eventTime") as "sessionStartTime",
+      max($"eventTime") as "sessionEndTime",
+      collect_list(array($"category", $"product", $"userId", $"eventTime", $"eventType")) as "record"
+    ).toDF()
+      .withColumn("sessionId", monotonically_increasing_id())
+      .select(explode($"record") as "r", $"sessionId", $"sessionStartTime", $"sessionEndTime")
+      .select(
+        $"r" (0) as "category",
+        $"r" (1) as "product",
+        $"r" (2) as "userId",
+        $"r" (3) as "eventTime",
+        $"r" (4) as "eventType",
+        $"sessionId",
+        $"sessionStartTime",
+        $"sessionEndTime"
+      )
+
+    groupedUsers
+      .withColumn("duration", unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))
+      .groupBy("sessionId", "category", "product").agg(sum("duration") as "totalTimeSpend")
+      .orderBy(desc("totalTimeSpend"))
+      .groupBy("category").agg(limit(10, collect_list("product")) as "top10ProductsSortedByDuration")
+  }
+
+  /**
     * Prints DF with a limit - maximum 1 million rows.
     */
   def printDF(df: DataFrame): Unit = {
     df.show(1000000, truncate = 0)
   }
+
+  /**
+    * Limits rows by "n" amount.
+    */
+  def limit(n: Int, c: Column): Column = array((0 until n).map(c.getItem): _*)
 
 }
