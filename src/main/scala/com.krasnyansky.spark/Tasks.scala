@@ -33,8 +33,8 @@ object Tasks {
 
     // 2.3. Find top 10 products
 
-    val rankedProducts = findRunkedProducts(events)
-    printDF(rankedProducts)
+    val topRankedProducts = findTopRankedProducts(events)
+    printDF(topRankedProducts)
   }
 
   // ============================================= Helpers =============================================
@@ -103,8 +103,11 @@ object Tasks {
 
   /**
     * Finds top 10 products ranked by time spent by users on product pages for each category.
+    *
+    * Todo: Clarify do we need to get unique! products in top 10 list?
+    *
     */
-  def findRunkedProducts(events: DataFrame): DataFrame = {
+  def findTopRankedProducts(events: DataFrame): DataFrame = {
     val groupedUsers = events.groupBy(window($"eventTime", "5 minutes"), $"userId", $"product").agg(
       min($"eventTime") as "sessionStartTime",
       max($"eventTime") as "sessionEndTime",

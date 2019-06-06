@@ -1,10 +1,14 @@
 package com.krasnyansky.spark
 
+import java.lang.Integer.parseInt
+
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.{BeforeAndAfterAll, FunSuite}
 
+import scala.collection.mutable
+
 class TaskTests extends FunSuite with BeforeAndAfterAll {
-  val spark: SparkSession = SparkSession.builder().appName("Spark Tasks Testings").master("local").getOrCreate()
+  val spark: SparkSession = SparkSession.builder().appName("SparkTasks Testings").master("local").getOrCreate()
   var events: DataFrame = _
 
   override def beforeAll(): Unit = {
@@ -16,31 +20,47 @@ class TaskTests extends FunSuite with BeforeAndAfterAll {
       .csv("src/test/resources/data/test_events.csv")
   }
 
-  test("that `enrichDatasetWithUserSession` function returns proper amount of rows (27)") {
+  test("`enrichDatasetWithUserSession` function returns proper amount of rows (27)") {
     val df = Tasks.enrichDatasetWithUserSession(events)
     assert(df.count() === 27)
   }
 
-  test("that `findUniqueUsers` function returns a proper amount of rows (3) and `LessThanOneMin` for `Books` category has proper value (2)") {
-    import spark.implicits._
+  test("`findUniqueUsers` function returns a proper amount of rows (3) and `LessThanOneMin` for `Books` category has proper value (2)") {
     val df = Tasks.findUniqueUsers(Tasks.enrichDatasetWithUserSession(events))
+
     assert(df.count() === 3)
-    assert(df.where($"category" === "books").select("lessThanOneMin").collect().map {
-      case Row(lessThanOneMin) => Integer.parseInt(lessThanOneMin.toString)
-    }.head === 2)
+    assert(getSingleValue(df, "lessThanOneMin") === 2)
   }
 
-  test("that `findMedianSessionDuration` function returns proper amount of rows (3) and median for `Books` category has proper value (25)") {
-    import spark.implicits._
+  test("`findMedianSessionDuration` function returns proper amount of rows (3) and median for `Books` category has proper value (25)") {
     val df = Tasks.findMedianSessionDuration(Tasks.enrichDatasetWithUserSession(events))
+
     assert(df.count() === 3)
-    assert(df.where($"category" === "books").select("median").collect().map {
-      case Row(median) => Integer.parseInt(median.toString)
-    }.head === 25)
+    assert(getSingleValue(df, "median") === 25)
+  }
+
+  test("`findRankedProducts` function returns proper amount of rows (3) and checks that top ranked book is `Scala for Dummies`") {
+    val df = Tasks.findTopRankedProducts(events)
+
+    assert(df.count() === 3)
+    assert(getFirstOfTop10Books(df) === "Scala for Dummies")
   }
 
   override def afterAll(): Unit = {
     spark.stop()
+  }
+
+  // ======================================== Helpers ========================================
+
+  private def getSingleValue(df: DataFrame, col: String) = {
+    import spark.implicits._
+    df.where($"category" === "books").select(col).collect().map { case Row(median) => parseInt(median.toString) }.head
+  }
+
+  private def getFirstOfTop10Books(df: DataFrame) = {
+    import spark.implicits._
+    df.where($"category" === "books").select("top10ProductsSortedByDuration").collect().map { case Row(xs) => xs }
+      .head.asInstanceOf[mutable.WrappedArray.ofRef[String]].head
   }
 
 }
