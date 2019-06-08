@@ -1,5 +1,6 @@
 package com.krasnyansky.spark
 
+import org.apache.spark.sql.expressions.Window
 import org.apache.spark.sql.{Column, DataFrame}
 
 object Tasks {
@@ -14,57 +15,36 @@ object Tasks {
       .option("inferSchema", "true")
       .csv("src/main/resources/data/events.csv")
 
-    // ============================================ Task 1 ============================================
-
-    val enrichedDatasetWithUserSession = enrichDatasetWithUserSession(events)
-    printDF(enrichedDatasetWithUserSession)
-
-    // ============================================ Task 2 ============================================
-
-    // 2.1. Get Median
-
-    val medianSessionDuration = findMedianSessionDuration(enrichedDatasetWithUserSession)
-    printDF(medianSessionDuration)
-
-    // 2.2. Find number of unique users
-
-    val uniqueUsers = findUniqueUsers(enrichedDatasetWithUserSession)
-    printDF(uniqueUsers)
-
-    // 2.3. Find top 10 products
-
+    val enrichedInputWithUserSession = enrichInputWithUserSession(events)
+    val medianSessionDuration = findMedianSessionDuration(enrichedInputWithUserSession)
+    val uniqueUsers = findUniqueUsers(enrichedInputWithUserSession)
     val topRankedProducts = findTopRankedProducts(events)
-    printDF(topRankedProducts)
+
+    printDFs(enrichedInputWithUserSession, medianSessionDuration, uniqueUsers, topRankedProducts)
   }
 
-  // ============================================= Helpers =============================================
-
   /**
-    * Enriches Dataset (Events) with user sessions.  By session we mean consecutive events that belong
+    * Enriches input (events) with user sessions.  By session we mean consecutive events that belong
     * to a single category and aren't more than 5 minutes away from each other.
     *
     * @return new DF with user session
     */
-  def enrichDatasetWithUserSession(events: DataFrame): DataFrame = {
-    val groupedEvents = events.groupBy(window($"eventTime", "5 minutes"), $"eventType")
+  def enrichInputWithUserSession(events: DataFrame): DataFrame = {
+    val eventWindow = Window.partitionBy("category", "userId").orderBy("eventTime")
+    val sessionIdWindow = Window.partitionBy("sessionId")
 
-    groupedEvents.agg(
-      min($"eventTime") as "sessionStartTime",
-      max($"eventTime") as "sessionEndTime",
-      collect_list(array($"category", $"product", $"userId", $"eventTime", $"eventType")) as "record"
-    ).toDF()
-      .withColumn("sessionId", monotonically_increasing_id())
-      .select(explode($"record") as "r", $"sessionId", $"sessionStartTime", $"sessionEndTime")
-      .select(
-        $"r" (0) as "category",
-        $"r" (1) as "product",
-        $"r" (2) as "userId",
-        $"r" (3) as "eventTime",
-        $"r" (4) as "eventType",
-        $"sessionId",
-        $"sessionStartTime",
-        $"sessionEndTime"
-      ).cache()
+    val `5 minutes` = 5 * 60
+
+    events
+      .withColumn("session", sum(
+        coalesce(
+          unix_timestamp($"eventTime") - lag(unix_timestamp($"eventTime"), 1).over(eventWindow), lit(0)
+        ) > `5 minutes` cast "int"
+      ).over(eventWindow))
+      .withColumn("sessionId", base64(concat_ws("+", $"category", $"userId", $"session")))
+      .withColumn("sessionStartTime", first("eventTime").over(sessionIdWindow))
+      .withColumn("sessionEndTime", last("eventTime").over(sessionIdWindow))
+      .drop("session")
   }
 
   /**
@@ -103,45 +83,16 @@ object Tasks {
 
   /**
     * Finds top 10 products ranked by time spent by users on product pages for each category.
-    *
-    * Todo: Clarify do we need to get unique! products in top 10 list?
-    *
     */
-  def findTopRankedProducts(events: DataFrame): DataFrame = {
-    val groupedUsers = events.groupBy(window($"eventTime", "5 minutes"), $"userId", $"product").agg(
-      min($"eventTime") as "sessionStartTime",
-      max($"eventTime") as "sessionEndTime",
-      collect_list(array($"category", $"product", $"userId", $"eventTime", $"eventType")) as "record"
-    ).toDF()
-      .withColumn("sessionId", monotonically_increasing_id())
-      .select(explode($"record") as "r", $"sessionId", $"sessionStartTime", $"sessionEndTime")
-      .select(
-        $"r" (0) as "category",
-        $"r" (1) as "product",
-        $"r" (2) as "userId",
-        $"r" (3) as "eventTime",
-        $"r" (4) as "eventType",
-        $"sessionId",
-        $"sessionStartTime",
-        $"sessionEndTime"
-      )
-
-    groupedUsers
-      .withColumn("duration", unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))
-      .groupBy("sessionId", "category", "product").agg(sum("duration") as "totalTimeSpend")
-      .orderBy(desc("totalTimeSpend"))
-      .groupBy("category").agg(limit(10, collect_list("product")) as "top10ProductsSortedByDuration")
-  }
+  def findTopRankedProducts(events: DataFrame): DataFrame = ???
 
   /**
     * Prints DF with a limit - maximum 1 million rows.
     */
-  def printDF(df: DataFrame): Unit = {
-    df.show(1000000, truncate = 0)
-  }
+  def printDFs(df: DataFrame*): Unit = df.foreach(_.show(1000000, truncate = false))
 
   /**
-    * Limits rows by "n" amount.
+    * Limits rows by "n" number.
     */
   def limit(n: Int, c: Column): Column = array((0 until n).map(c.getItem): _*)
 
