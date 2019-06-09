@@ -18,7 +18,7 @@ object Tasks {
     val enrichedInputWithUserSession = enrichInputWithUserSession(events)
     val medianSessionDuration = findMedianSessionDuration(enrichedInputWithUserSession)
     val uniqueUsers = findUniqueUsers(enrichedInputWithUserSession)
-    val topRankedProducts = findTopRankedProducts(events)
+    val topRankedProducts = findTopRankedProducts(events, 10)
 
     printDFs(enrichedInputWithUserSession, medianSessionDuration, uniqueUsers, topRankedProducts)
   }
@@ -84,16 +84,26 @@ object Tasks {
   /**
     * Finds top 10 products ranked by time spent by users on product pages for each category.
     */
-  def findTopRankedProducts(events: DataFrame): DataFrame = ???
+  def findTopRankedProducts(events: DataFrame, topProductLimit: Int): DataFrame = {
+    val eventWindow = Window.partitionBy('category, 'userId).orderBy('eventTime)
+    val productWindow = Window.partitionBy('product).orderBy('eventTime)
+    val sessionWindow = Window.partitionBy('session).orderBy('product)
+    val sessionIdWindow = Window.orderBy('session)
+    val categoryWindow = Window.partitionBy('category).orderBy('duration.desc)
+
+    events
+      .withColumn("e", rank.over(eventWindow))
+      .withColumn("p", rank.over(productWindow))
+      .withColumn("session", base64(concat_ws("+", 'category, 'userId, 'e - 'p, 'product)))
+      .withColumn("difference", coalesce(unix_timestamp('eventTime) - lag(unix_timestamp('eventTime), 1).over(sessionWindow), lit(0)))
+      .withColumn("sessionId", rank.over(sessionIdWindow))
+      .groupBy('category, 'product, 'userId, 'sessionId).agg(sum('difference) as "duration")
+      .withColumn("rank", rank.over(categoryWindow))
+      .where('rank < topProductLimit)
+  }
 
   /**
     * Prints DF with a limit - maximum 1 million rows.
     */
   def printDFs(df: DataFrame*): Unit = df.foreach(_.show(1000000, truncate = false))
-
-  /**
-    * Limits rows by "n" number.
-    */
-  def limit(n: Int, c: Column): Column = array((0 until n).map(c.getItem): _*)
-
 }
