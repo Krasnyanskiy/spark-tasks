@@ -1,6 +1,6 @@
 # Overview
 
-`SparkTasks` is a simple solution for problems that we need to solve using `Apache Spark` on given Dataset.
+`SparkTasks` is a solution for various problems that we need to solve on given dataset using `Apache Spark`.
 
 ## Dataset (example)
 
@@ -10,8 +10,6 @@ books     |  Scala for Dummies   |  user 1    |  2018-03-01 12:00:02 | like
 books     |  Scala for Dummies   |  user 1    |  2018-03-01 12:01:40 | check status
 books     |  Java for Dummies    |  user 1    |  2018-03-01 12:01:50 | view description
 books     |  Romeo and Juliet    |  user 2    |  2018-03-01 12:02:45 | add to bucket
-
-Please note that Dataset contains tab separated values.
 
 ## Problem descriptions
 
