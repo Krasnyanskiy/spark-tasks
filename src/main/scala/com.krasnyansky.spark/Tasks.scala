@@ -1,7 +1,7 @@
 package com.krasnyansky.spark
 
+import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.expressions.Window
-import org.apache.spark.sql.{Column, DataFrame}
 
 object Tasks {
   import org.apache.spark.sql.functions._
@@ -36,12 +36,8 @@ object Tasks {
     val `5 minutes` = 5 * 60
 
     events
-      .withColumn("session", sum(
-        coalesce(
-          unix_timestamp($"eventTime") - lag(unix_timestamp($"eventTime"), 1).over(eventWindow), lit(0)
-        ) > `5 minutes` cast "int"
-      ).over(eventWindow))
-      .withColumn("sessionId", base64(concat_ws("+", $"category", $"userId", $"session")))
+      .withColumn("sessionChanged", sum(coalesce(unix_timestamp('eventTime) - lag(unix_timestamp('eventTime), 1).over(eventWindow), lit(0)) > `5 minutes` cast "int").over(eventWindow))
+      .withColumn("sessionId", base64(concat_ws("+", 'category, 'userId, 'sessionChanged)))
       .withColumn("sessionStartTime", first("eventTime").over(sessionIdWindow))
       .withColumn("sessionEndTime", last("eventTime").over(sessionIdWindow))
       .drop("session")
@@ -54,7 +50,7 @@ object Tasks {
     */
   def findMedianSessionDuration(eventsWithUserSessions: DataFrame): DataFrame = {
     eventsWithUserSessions
-      .withColumn("duration", unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))
+      .withColumn("duration", unix_timestamp('sessionEndTime) - unix_timestamp('sessionStartTime))
       .groupBy("category")
       .agg(callUDF("percentile_approx", col("duration"), lit(0.5)) as "median")
   }
@@ -67,17 +63,14 @@ object Tasks {
     */
   def findUniqueUsers(sessionStatistic: DataFrame): DataFrame = {
     val withDuration = sessionStatistic
-      .withColumn(
-        "duration",
-        (unix_timestamp($"sessionEndTime") - unix_timestamp($"sessionStartTime"))/60
-      )
+      .withColumn("duration", (unix_timestamp('sessionEndTime) - unix_timestamp('sessionStartTime))/60)
 
     withDuration
       .groupBy("category")
       .agg(
-        countDistinct($"userId", when($"duration" < 1, $"userId")) as "lessThanOneMin",
-        countDistinct($"userId", when($"duration" > 1 && $"duration" < 5, $"userId")) as "oneToFiveMins",
-        countDistinct($"userId", when($"duration" > 5, $"userId")) as "moreThanFiveMins"
+        countDistinct('userId, when('duration < 1, 'userId)) as "lessThanOneMin",
+        countDistinct('userId, when('duration > 1 && 'duration < 5, 'userId)) as "oneToFiveMins",
+        countDistinct('userId, when('duration > 5, 'userId)) as "moreThanFiveMins"
       )
   }
 
