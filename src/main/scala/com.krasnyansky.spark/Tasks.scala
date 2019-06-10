@@ -32,15 +32,17 @@ object Tasks {
   def enrichInputWithUserSession(events: DataFrame): DataFrame = {
     val eventWindow = Window.partitionBy("category", "userId").orderBy("eventTime")
     val sessionIdWindow = Window.partitionBy("sessionId")
+    val uniqueSession = Window.orderBy("uniqueSession")
 
     val `5 minutes` = 5 * 60
 
     events
       .withColumn("sessionChanged", sum(coalesce(unix_timestamp('eventTime) - lag(unix_timestamp('eventTime), 1).over(eventWindow), lit(0)) > `5 minutes` cast "int").over(eventWindow))
-      .withColumn("sessionId", base64(concat_ws("+", 'category, 'userId, 'sessionChanged)))
+      .withColumn("uniqueSession", concat_ws("+", 'category, 'userId, 'sessionChanged))
+      .withColumn("sessionId", rank.over(uniqueSession)) // make readable session id
       .withColumn("sessionStartTime", first("eventTime").over(sessionIdWindow))
       .withColumn("sessionEndTime", last("eventTime").over(sessionIdWindow))
-      .drop("session")
+      .drop("sessionChanged", "uniqueSession")
   }
 
   /**
