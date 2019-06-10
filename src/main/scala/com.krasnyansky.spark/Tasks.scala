@@ -15,12 +15,12 @@ object Tasks {
       .option("inferSchema", "true")
       .csv("src/main/resources/data/events.csv")
 
-    //val enrichedInputWithUserSession = enrichInputWithUserSession(events)
-    //val medianSessionDuration = findMedianSessionDuration(enrichedInputWithUserSession)
-    //val uniqueUsers = findUniqueUsers(enrichedInputWithUserSession)
+    val enrichedInputWithUserSession = enrichInputWithUserSession(events)
+    val medianSessionDuration = findMedianSessionDuration(enrichedInputWithUserSession)
+    val uniqueUsers = findUniqueUsers(enrichedInputWithUserSession)
     val topRankedProducts = findTopRankedProducts(events, 10)
 
-    printDFs(/*enrichedInputWithUserSession, medianSessionDuration, uniqueUsers, */topRankedProducts)
+    printDFs(enrichedInputWithUserSession, medianSessionDuration, uniqueUsers, topRankedProducts)
   }
 
   /**
